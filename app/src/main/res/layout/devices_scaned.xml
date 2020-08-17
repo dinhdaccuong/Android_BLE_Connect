@@ -1,0 +1,34 @@
+<?xml version="1.0" encoding="utf-8"?>
+<RelativeLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    android:layout_width="match_parent" android:layout_height="wrap_content"
+    android:background="@drawable/bg_key">
+
+    <TextView
+        android:textColor="#971212"
+        android:layout_marginLeft="10dp"
+        android:layout_marginTop= "2dp"
+        android:id="@+id/textViewName"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:text="Device name"
+        android:textSize="20sp"/>
+
+    <TextView
+        android:id="@+id/textViewMacAdd"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:layout_marginTop="30dp"
+        android:text="Mac address"
+        android:textColor="#040404"
+        android:layout_marginLeft="10dp"
+        android:textSize="18sp" />
+
+    <TextView
+        android:id="@+id/textViewRSSI"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:text="rssi"
+        android:layout_marginTop= "58dp"
+        android:layout_marginLeft="10dp"
+        android:textSize="15sp" />
+</RelativeLayout>
