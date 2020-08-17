@@ -51,6 +51,10 @@ public class MainActivity extends AppCompatActivity {
     ListView lvDeviceScaned;
     Button btConnect;
     Button btScan;
+    Button btNotify;
+    Button btLEDOn;
+    Button btLEDOff;
+
     SimpleDeviceInfoAdapter adapterDeviceInfo;
     ArrayList<SimpleDeviceInfo> listDeviceInfo;
     ArrayList<BluetoothDevice> listDeviceDiscovered;
@@ -66,7 +70,7 @@ public class MainActivity extends AppCompatActivity {
     ScanSettings settings;
     boolean isScanning = false;
     boolean isConnected = false;
-
+    boolean isNotified = false;
     private static final int PERMISSION_REQUEST_COARSE_LOCATION = 1;
     private static UUID SERVICE_UUID = UUID.fromString("feed0001-c497-4476-a7ed-727de7648ab1");
     private Handler mHandler = new Handler();
@@ -137,6 +141,21 @@ public class MainActivity extends AppCompatActivity {
                 lvDeviceScaned.setTag(listDeviceInfo.get(i));
             }
         });
+        btScan = (Button) findViewById(R.id.buttonScan);
+        btScan.setOnClickListener(new View.OnClickListener() {
+            @Override
+            public void onClick(View view) {
+                if (!isScanning) {
+                    if(isConnected) disconnectedDevice();
+                    clearListView();
+                    startScanning();
+                }
+                else{
+                    mHandler.removeCallbacksAndMessages(null);
+                    stopScanning();
+                }
+            }
+        });
 
         btConnect = (Button) findViewById(R.id.buttonConnect);
         btConnect.setOnClickListener(new View.OnClickListener() {
@@ -151,19 +170,41 @@ public class MainActivity extends AppCompatActivity {
             }
         });
 
-        btScan = (Button) findViewById(R.id.buttonScan);
-        btScan.setOnClickListener(new View.OnClickListener() {
+        btNotify = (Button) findViewById(R.id.btNotify);
+        btNotify.setOnClickListener(new View.OnClickListener() {
             @Override
             public void onClick(View view) {
-                if (!isScanning) {
-                    if(isConnected) disconnectedDevice();
-                    clearListView();
-                    startScanning();
-                }
-                else{
-                    mHandler.removeCallbacksAndMessages(null);
-                    stopScanning();
-                }
+                if(!isConnected || myCharacteristic == null || isNotified)
+                    return;
+                Log.d(log_tag, "Trying notify...");
+
+                isNotified = true;
+            }
+        });
+
+        btLEDOn = (Button) findViewById(R.id.buttonOn);
+        btLEDOn.setOnClickListener(new View.OnClickListener() {
+            @Override
+            public void onClick(View view) {
+                if(!isConnected || myCharacteristic == null)
+                    return;
+                Log.d(log_tag, "Trying turn on the led...");
+                byte[] byteToWrite = {CommandToWrite.COMMAND_TURN_ON_LED};
+                myCharacteristic.setValue(byteToWrite);
+                bleGatt.writeCharacteristic(myCharacteristic);
+            }
+        });
+
+        btLEDOff = (Button) findViewById(R.id.buttonOff);
+        btLEDOff.setOnClickListener(new View.OnClickListener() {
+            @Override
+            public void onClick(View view) {
+                if(!isConnected || myCharacteristic == null)
+                    return;
+                Log.d(log_tag, "Trying turn off the led...");
+                byte[] byteToWrite = {CommandToWrite.COMMAND_TURN_OFF_LED};
+                myCharacteristic.setValue(byteToWrite);
+                bleGatt.writeCharacteristic(myCharacteristic);
             }
         });
     }
@@ -254,6 +295,28 @@ public class MainActivity extends AppCompatActivity {
         }
     };
 
+    private void ExecuteResponseCommand(byte command)
+    {
+        switch (command)
+        {
+            case 0:     // led turned On
+                Log.d(log_tag, "Led turned on");
+                break;
+            case 1:     // led turned Off
+                Log.d(log_tag, "Led turned off");
+                break;
+            case 2:     // Motor go
+                break;
+            case 3:     // Motor left
+                break;
+            case 4:     // Motor right
+                break;
+            case 5:     // Motor stop
+                break;
+            default:
+                break;
+        }
+    }
     private final BluetoothGattCallback bleGattCallback = new BluetoothGattCallback() {
         @Override
         public void onConnectionStateChange(BluetoothGatt gatt, int status, int newState) {
@@ -262,6 +325,7 @@ public class MainActivity extends AppCompatActivity {
             switch (newState){
                 case 0:         // device disconnected
                     isConnected = false;
+                    isNotified = false;
                     btConnect.setText("Connect");
                     Log.d(log_tag, "onConnectionStateChange: Device disconnected");
                     break;
@@ -270,6 +334,7 @@ public class MainActivity extends AppCompatActivity {
                     btConnect.setText("Disconnect");
                     Log.d(log_tag, "onConnectionStateChange: Device connected");
                     bleGatt.discoverServices();
+
                     break;
                 default:        // another state
                     Log.d(log_tag, "onConnectionStateChange: Another state");
@@ -314,6 +379,11 @@ public class MainActivity extends AppCompatActivity {
                 myDescriptor = listDescriptor.get(0);
                 Log.d(log_tag, "My Descriptor: " + myDescriptor.getUuid().toString());
             }
+
+            // Enable notify
+            bleGatt.setCharacteristicNotification(myCharacteristic, true);
+            myDescriptor.setValue(BluetoothGattDescriptor.ENABLE_NOTIFICATION_VALUE);
+            bleGatt.writeDescriptor(myDescriptor);
         }
 
         @Override
@@ -323,15 +393,20 @@ public class MainActivity extends AppCompatActivity {
         }
 
         @Override
-        public void onCharacteristicWrite(BluetoothGatt gatt, BluetoothGattCharacteristic characteristic, int status) {
+        public void onCharacteristicWrite(BluetoothGatt gatt, BluetoothGattCharacteristic characteristic, int status) { // ESP32 write
             super.onCharacteristicWrite(gatt, characteristic, status);
-            Log.d(log_tag, "onCharacteristicWrite");
+            //Log.d(log_tag, "onCharacteristicWrite");
         }
 
         @Override
         public void onCharacteristicChanged(BluetoothGatt gatt, BluetoothGattCharacteristic characteristic) {
             super.onCharacteristicChanged(gatt, characteristic);
-            Log.d(log_tag, "onCharacteristicChanged");
+            //Log.d(log_tag, "onCharacteristicChanged");
+            byte[] byteToRead = myCharacteristic.getValue();
+            if(byteToRead.length <= 0)
+                return;
+            byte byte0 = byteToRead[0];
+            ExecuteResponseCommand(byte0);
         }
     };
 

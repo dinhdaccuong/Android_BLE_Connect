@@ -784,10 +784,10 @@ id barrier
 id beginning
 id blocking
 id bottom
-id button
-id button2
-id button3
+id btNotify
 id buttonConnect
+id buttonOff
+id buttonOn
 id buttonPanel
 id buttonScan
 id buttonVoice
