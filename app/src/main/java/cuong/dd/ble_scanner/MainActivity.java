@@ -6,6 +6,9 @@ import android.Manifest;
 import android.app.AlertDialog;
 import android.bluetooth.BluetoothAdapter;
 import android.bluetooth.BluetoothDevice;
+import android.bluetooth.BluetoothGatt;
+import android.bluetooth.BluetoothGattCallback;
+import android.bluetooth.BluetoothGattCharacteristic;
 import android.bluetooth.BluetoothManager;
 import android.bluetooth.le.BluetoothLeScanner;
 import android.bluetooth.le.ScanCallback;
@@ -46,13 +49,18 @@ public class MainActivity extends AppCompatActivity {
     Button btScan;
     SimpleDeviceInfoAdapter adapterDeviceInfo;
     ArrayList<SimpleDeviceInfo> listDeviceInfo;
+    ArrayList<BluetoothDevice> listDeviceDiscovered;
     Set<SimpleDeviceInfo> setDeviceInfo;
     // BLE
     BluetoothManager bleManager;
     BluetoothAdapter bleAdapter;
     BluetoothLeScanner bleScanner;
+    BluetoothGatt bleGatt;
+
     ScanSettings settings;
     boolean isScanning = false;
+    boolean isConnected = false;
+
     private static final int PERMISSION_REQUEST_COARSE_LOCATION = 1;
     private static UUID SERVICE_UUID = UUID.fromString("feed0001-c497-4476-a7ed-727de7648ab1");
     private Handler mHandler = new Handler();
@@ -60,8 +68,10 @@ public class MainActivity extends AppCompatActivity {
     private static final long SCAN_PERIOD = 15000;
 
     String log_tag = "BLE_CUONG";
+    String log_tag_gatt = "GATT_CUONG";
 
     private GoogleApiClient client;
+
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
@@ -85,14 +95,13 @@ public class MainActivity extends AppCompatActivity {
         }
         client = new GoogleApiClient.Builder(this).addApi(AppIndex.API).build();
         // Init BLE
-        bleManager =(BluetoothManager)getSystemService(Context.BLUETOOTH_SERVICE);
+        bleManager = (BluetoothManager) getSystemService(Context.BLUETOOTH_SERVICE);
         bleAdapter = bleManager.getAdapter();
 
-        if(bleAdapter == null || !bleAdapter.isEnabled()) {
+        if (bleAdapter == null || !bleAdapter.isEnabled()) {
             Log.d(log_tag, "BLE adapter is not enable!");
             return;
-        }
-        else {
+        } else {
             Log.d(log_tag, "BLE adapter init successfully!");
         }
 
@@ -100,44 +109,59 @@ public class MainActivity extends AppCompatActivity {
         settings = new ScanSettings.Builder().setScanMode(ScanSettings.SCAN_MODE_LOW_LATENCY).setReportDelay(500).build();
     }
 
-    private void InitView()
-    {
+    private void InitView() {
         listDeviceInfo = new ArrayList<SimpleDeviceInfo>();
         adapterDeviceInfo = new SimpleDeviceInfoAdapter(this, R.layout.devices_scaned, listDeviceInfo);
         setDeviceInfo = new LinkedHashSet<SimpleDeviceInfo>();
+        listDeviceDiscovered = new ArrayList<BluetoothDevice>();
 
-
-        lvDeviceScaned = (ListView)findViewById(R.id.listViewDevives);
+        lvDeviceScaned = (ListView) findViewById(R.id.listViewDevives);
         lvDeviceScaned.setAdapter(adapterDeviceInfo);
         lvDeviceScaned.setOnItemClickListener(new AdapterView.OnItemClickListener() {
             @Override
             public void onItemClick(AdapterView<?> adapterView, View view, int i, long l) {
                 view.setSelected(true);
-                if(isScanning){
+                if (isScanning) {
+                    mHandler.removeCallbacksAndMessages(null);
                     stopScanning();
                 }
                 lvDeviceScaned.setTag(listDeviceInfo.get(i));
-
             }
         });
 
         btConnect = (Button) findViewById(R.id.buttonConnect);
+        btConnect.setOnClickListener(new View.OnClickListener() {
+            @Override
+            public void onClick(View view) {
+                if(!isConnected){
+                    connectToDeviceSelected();
+                }
+                else{
+                    disconnectedDevice();
+                }
+            }
+        });
+
         btScan = (Button) findViewById(R.id.buttonScan);
         btScan.setOnClickListener(new View.OnClickListener() {
             @Override
             public void onClick(View view) {
-                if(!isScanning)
-                {
-                    isScanning = true;
+                if (!isScanning) {
                     clearListView();
                     startScanning();
+                }
+                else{
+                    mHandler.removeCallbacksAndMessages(null);
+                    stopScanning();
                 }
             }
         });
     }
 
-    private void startScanning(){
+    private void startScanning() {
+        isScanning = true;
         Log.d(log_tag, "Start scanning!");
+        btScan.setText("Stop Scanning");
         AsyncTask.execute(new Runnable() {
             @Override
             public void run() {
@@ -153,10 +177,10 @@ public class MainActivity extends AppCompatActivity {
         }, SCAN_PERIOD);
     }
 
-    private void stopScanning()
-    {
+    private void stopScanning() {
         isScanning = false;
         Log.d(log_tag, "Stop scanning!");
+        btScan.setText("Star Scanning");
         AsyncTask.execute(new Runnable() {
             @Override
             public void run() {
@@ -164,11 +188,26 @@ public class MainActivity extends AppCompatActivity {
             }
         });
     }
-    private void clearListView()
-    {
+
+    private void clearListView() {
         listDeviceInfo.clear();
         adapterDeviceInfo.notifyDataSetChanged();
     }
+
+    private void connectToDeviceSelected(){
+        Log.d(log_tag, "Trying to connect...");
+        Object ob = lvDeviceScaned.getTag();
+        if(ob == null)
+            return;
+        SimpleDeviceInfo spdvInfor = (SimpleDeviceInfo)ob;
+        bleGatt = listDeviceDiscovered.get(spdvInfor.getDeviceIndex()).connectGatt(this, false, bleGattCallback);
+    }
+
+    private void disconnectedDevice(){
+        Log.d(log_tag, "Trying to disconnect...");
+        bleGatt.disconnect();
+    }
+    // Device scan callback
     private final ScanCallback scanCallback = new ScanCallback() {
         @Override
         public void onScanResult(int callbackType, ScanResult result) {
@@ -180,23 +219,22 @@ public class MainActivity extends AppCompatActivity {
         @Override
         public void onBatchScanResults(List<ScanResult> results) {
             super.onBatchScanResults(results);
-            if(!results.isEmpty()){
-                setDeviceInfo.clear();
+            if (!results.isEmpty()) {
+                setDeviceInfo.clear();  // Xóa set
                 Log.d(log_tag, setDeviceInfo.size() + "");
-                for (int i = 0; i < results.size(); i++)
-                {
+                for (int i = 0; i < results.size(); i++) {      // Lặp lại địa chỉ mac
                     ScanResult result = results.get(i);
-                    SimpleDeviceInfo spDeviceInfo = new SimpleDeviceInfo(result.getDevice().getName()+ "", result.getDevice().getAddress(), "rssi: " + result.getRssi());
-                    Log.d(log_tag, spDeviceInfo.getDeviceMacAddress());
-                    setDeviceInfo.add(spDeviceInfo);
+                    SimpleDeviceInfo spDeviceInfo = new SimpleDeviceInfo(i, result.getDevice().getName() + "", result.getDevice().getAddress(), "rssi: " + result.getRssi());
+                    setDeviceInfo.add(spDeviceInfo);    // Thêm vào set
                 }
+
                 listDeviceInfo.clear();
-                for(SimpleDeviceInfo dv: setDeviceInfo)
-                {
+                listDeviceDiscovered.clear();   // Xóa list cũ
+                for (SimpleDeviceInfo dv : setDeviceInfo) {
                     listDeviceInfo.add(dv);
+                    listDeviceDiscovered.add(results.get(dv.getDeviceIndex()).getDevice()); // indexDevice trong device infor cũn là chỉ số trong results
                 }
                 adapterDeviceInfo.notifyDataSetChanged();
-
             }
         }
 
@@ -204,6 +242,53 @@ public class MainActivity extends AppCompatActivity {
         public void onScanFailed(int errorCode) {
             super.onScanFailed(errorCode);
             Log.d(log_tag, "Scan failed");
+        }
+    };
+
+    private final BluetoothGattCallback bleGattCallback = new BluetoothGattCallback() {
+        @Override
+        public void onConnectionStateChange(BluetoothGatt gatt, int status, int newState) {
+            super.onConnectionStateChange(gatt, status, newState);
+            Log.d(log_tag, "onConnectionStateChange");
+            switch (newState){
+                case 0:         // device disconnected
+                    isConnected = false;
+                    btConnect.setText("Connect");
+                    Log.d(log_tag, "onConnectionStateChange: Device disconnected");
+                    break;
+                case 2:         // device connected
+                    isConnected = true;
+                    btConnect.setText("Disconnect");
+                    Log.d(log_tag, "onConnectionStateChange: Device connected");
+                    break;
+                default:        // another state
+                    Log.d(log_tag, "onConnectionStateChange: Another state");
+                    break;
+            }
+        }
+
+        @Override
+        public void onServicesDiscovered(BluetoothGatt gatt, int status) {
+            super.onServicesDiscovered(gatt, status);
+            Log.d(log_tag, "onServicesDiscovered");
+        }
+
+        @Override
+        public void onCharacteristicRead(BluetoothGatt gatt, BluetoothGattCharacteristic characteristic, int status) {
+            super.onCharacteristicRead(gatt, characteristic, status);
+            Log.d(log_tag, "onCharacteristicRead");
+        }
+
+        @Override
+        public void onCharacteristicWrite(BluetoothGatt gatt, BluetoothGattCharacteristic characteristic, int status) {
+            super.onCharacteristicWrite(gatt, characteristic, status);
+            Log.d(log_tag, "onCharacteristicWrite");
+        }
+
+        @Override
+        public void onCharacteristicChanged(BluetoothGatt gatt, BluetoothGattCharacteristic characteristic) {
+            super.onCharacteristicChanged(gatt, characteristic);
+            Log.d(log_tag, "onCharacteristicChanged");
         }
     };
 

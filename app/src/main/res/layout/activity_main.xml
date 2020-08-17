@@ -36,7 +36,7 @@
         android:id="@+id/buttonScan"
         android:layout_width="120dp"
         android:layout_height="80dp"
-        android:text="Scan"
+        android:text="Start Scanning"
         app:layout_constraintBottom_toBottomOf="parent"
         app:layout_constraintHorizontal_bias="0.041"
         app:layout_constraintLeft_toLeftOf="parent"

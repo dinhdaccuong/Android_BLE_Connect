@@ -3,6 +3,7 @@ package cuong.dd.ble_scanner;
 import java.util.Objects;
 
 public class SimpleDeviceInfo {
+    int deviceIndex;
     String deivceName;
     String deviceMacAddress;
     String rssi;
@@ -10,13 +11,20 @@ public class SimpleDeviceInfo {
     public SimpleDeviceInfo(){
 
     }
-    public SimpleDeviceInfo(String deivceName, String deviceMacAddress, String rssi) {
-
+    public SimpleDeviceInfo(int deviceIndex, String deivceName, String deviceMacAddress, String rssi) {
+        this.deviceIndex = deviceIndex;
         this.deivceName = deivceName;
         this.deviceMacAddress = deviceMacAddress;
         this.rssi = rssi;
     }
 
+    public int getDeviceIndex() {
+        return deviceIndex;
+    }
+
+    public void setDeviceIndex(int deviceIndex) {
+        this.deviceIndex = deviceIndex;
+    }
 
     public String getDeivceName() {
         return deivceName;
