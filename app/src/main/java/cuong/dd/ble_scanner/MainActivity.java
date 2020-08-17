@@ -9,6 +9,7 @@ import android.bluetooth.BluetoothDevice;
 import android.bluetooth.BluetoothGatt;
 import android.bluetooth.BluetoothGattCallback;
 import android.bluetooth.BluetoothGattCharacteristic;
+import android.bluetooth.BluetoothGattDescriptor;
 import android.bluetooth.BluetoothGattServer;
 import android.bluetooth.BluetoothGattService;
 import android.bluetooth.BluetoothManager;
@@ -60,7 +61,8 @@ public class MainActivity extends AppCompatActivity {
     BluetoothLeScanner bleScanner;
     BluetoothGatt bleGatt;
     BluetoothGattService myGattService = null;
-
+    BluetoothGattCharacteristic myCharacteristic = null;
+    BluetoothGattDescriptor     myDescriptor = null;
     ScanSettings settings;
     boolean isScanning = false;
     boolean isConnected = false;
@@ -298,6 +300,20 @@ public class MainActivity extends AppCompatActivity {
                 return;
             }
             Log.d(log_tag, "Found Your GattService!");
+            List<BluetoothGattCharacteristic> listCharacteristic = myGattService.getCharacteristics();
+            if(!listCharacteristic.isEmpty()){
+                myCharacteristic = listCharacteristic.get(0);
+                Log.d(log_tag, "My characteristic: " + myCharacteristic.getUuid().toString());
+            }
+
+            if(myCharacteristic == null)
+                return;
+
+            List<BluetoothGattDescriptor> listDescriptor = myCharacteristic.getDescriptors();
+            if(!listDescriptor.isEmpty()){
+                myDescriptor = listDescriptor.get(0);
+                Log.d(log_tag, "My Descriptor: " + myDescriptor.getUuid().toString());
+            }
         }
 
         @Override

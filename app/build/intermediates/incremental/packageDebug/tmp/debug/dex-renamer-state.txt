@@ -1,4 +1,4 @@
-#Mon Aug 17 16:42:57 ICT 2020
+#Mon Aug 17 16:52:01 ICT 2020
 base.0=D\:\\XuLyTiengNoi_Project\\Android_Test\\Android_BLE_Connect\\app\\build\\intermediates\\dex\\debug\\mergeExtDexDebug\\classes.dex
 path.1=classes.dex
 renamed.1=classes2.dex
