@@ -9,6 +9,8 @@ import android.bluetooth.BluetoothDevice;
 import android.bluetooth.BluetoothGatt;
 import android.bluetooth.BluetoothGattCallback;
 import android.bluetooth.BluetoothGattCharacteristic;
+import android.bluetooth.BluetoothGattServer;
+import android.bluetooth.BluetoothGattService;
 import android.bluetooth.BluetoothManager;
 import android.bluetooth.le.BluetoothLeScanner;
 import android.bluetooth.le.ScanCallback;
@@ -272,7 +274,18 @@ public class MainActivity extends AppCompatActivity {
         @Override
         public void onServicesDiscovered(BluetoothGatt gatt, int status) {
             super.onServicesDiscovered(gatt, status);
+
+            List<BluetoothGattService> listBLEGattService = bleGatt.getServices();
+            if(listBLEGattService == null){
+                Log.d(log_tag, "Could not find any services!");
+                return;
+            }
             Log.d(log_tag, "onServicesDiscovered");
+            BluetoothGattServer myGattService;
+            for(BluetoothGattService bleGatt: listBLEGattService){
+                String sUUID = bleGatt.getUuid().toString();
+                Log.d(log_tag, sUUID);
+            }
         }
 
         @Override
