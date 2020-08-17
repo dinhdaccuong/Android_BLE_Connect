@@ -18,6 +18,7 @@ import android.bluetooth.le.ScanSettings;
 import android.content.Context;
 import android.content.DialogInterface;
 import android.content.pm.PackageManager;
+import android.graphics.Color;
 import android.net.Uri;
 import android.os.AsyncTask;
 import android.os.Bundle;
@@ -221,7 +222,6 @@ public class MainActivity extends AppCompatActivity {
             super.onBatchScanResults(results);
             if (!results.isEmpty()) {
                 setDeviceInfo.clear();  // Xóa set
-                Log.d(log_tag, setDeviceInfo.size() + "");
                 for (int i = 0; i < results.size(); i++) {      // Lặp lại địa chỉ mac
                     ScanResult result = results.get(i);
                     SimpleDeviceInfo spDeviceInfo = new SimpleDeviceInfo(i, result.getDevice().getName() + "", result.getDevice().getAddress(), "rssi: " + result.getRssi());
@@ -260,6 +260,8 @@ public class MainActivity extends AppCompatActivity {
                     isConnected = true;
                     btConnect.setText("Disconnect");
                     Log.d(log_tag, "onConnectionStateChange: Device connected");
+
+                    bleGatt.discoverServices();
                     break;
                 default:        // another state
                     Log.d(log_tag, "onConnectionStateChange: Another state");
