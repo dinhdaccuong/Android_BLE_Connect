@@ -59,6 +59,7 @@ public class MainActivity extends AppCompatActivity {
     BluetoothAdapter bleAdapter;
     BluetoothLeScanner bleScanner;
     BluetoothGatt bleGatt;
+    BluetoothGattService myGattService = null;
 
     ScanSettings settings;
     boolean isScanning = false;
@@ -67,6 +68,9 @@ public class MainActivity extends AppCompatActivity {
     private static final int PERMISSION_REQUEST_COARSE_LOCATION = 1;
     private static UUID SERVICE_UUID = UUID.fromString("feed0001-c497-4476-a7ed-727de7648ab1");
     private Handler mHandler = new Handler();
+
+    // Server
+    String myServiceUUID = "4fafc201-1fb5-459e-8fcc-c5c9c331914b";
 
     private static final long SCAN_PERIOD = 15000;
 
@@ -150,6 +154,7 @@ public class MainActivity extends AppCompatActivity {
             @Override
             public void onClick(View view) {
                 if (!isScanning) {
+                    if(isConnected) disconnectedDevice();
                     clearListView();
                     startScanning();
                 }
@@ -262,7 +267,6 @@ public class MainActivity extends AppCompatActivity {
                     isConnected = true;
                     btConnect.setText("Disconnect");
                     Log.d(log_tag, "onConnectionStateChange: Device connected");
-
                     bleGatt.discoverServices();
                     break;
                 default:        // another state
@@ -281,11 +285,19 @@ public class MainActivity extends AppCompatActivity {
                 return;
             }
             Log.d(log_tag, "onServicesDiscovered");
-            BluetoothGattServer myGattService;
             for(BluetoothGattService bleGatt: listBLEGattService){
                 String sUUID = bleGatt.getUuid().toString();
-                Log.d(log_tag, sUUID);
+                if(sUUID.equals(myServiceUUID)){
+                    myGattService = bleGatt;
+                    break;
+                }
             }
+            if(myGattService == null)
+            {
+                Log.d(log_tag, "Cound not find the Your GatService!");
+                return;
+            }
+            Log.d(log_tag, "Found Your GattService!");
         }
 
         @Override
